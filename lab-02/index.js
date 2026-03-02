@@ -1,5 +1,5 @@
-const generators = require("./iterator-lib/generators");
-const consumer = require("./iterator-lib/consumer");
+const generators = require("./generators");
+const consumer = require("./consumer");
 
 module.exports = {
   ...generators,
