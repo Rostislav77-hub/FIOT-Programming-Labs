@@ -1,2 +1,2 @@
-# Programming-CourseWork (Matviiv IM-55)
-My Labs and CourseWork (2-nd semester)
+# FIOT-Programming-Labs (Matviiv IM-55)
+My Labs (2-nd semester)
