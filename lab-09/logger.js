@@ -81,3 +81,36 @@ const withLogging = ({ level, logger }) => (fn) => {
   Object.defineProperty(decorated, 'name', { value: `logged(${fnName})` });
   return decorated;
 };
+
+(async () => {
+  const sep = (title) => console.log(`\n${'─'.repeat(55)}\n  ${title}\n${'─'.repeat(55)}`);
+
+  sep('Тест 1: sync + INFO + JsonFormatter');
+  function add(a, b) { return a + b; }
+  const loggedAdd = withLogging({ level: 'INFO', logger: new ConsoleTransport(new JsonFormatter()) })(add);
+  loggedAdd(3, 7);
+
+  sep('Тест 2: async + DEBUG + SimpleFormatter (Замір часу)');
+  async function fetchUser(id) {
+    await new Promise(res => setTimeout(res, 80)); 
+    if (id <= 0) throw new Error(`Invalid user id: ${id}`);
+    return { id, name: 'Alice', role: 'admin' };
+  }
+  const loggedFetch = withLogging({ level: 'DEBUG', logger: new ConsoleTransport(new SimpleFormatter()) })(fetchUser);
+  await loggedFetch(42);
+
+  sep('Тест 3: ERROR level — успіх мовчить');
+  const errorLogger = withLogging({ level: 'ERROR', logger: new ConsoleTransport(new SimpleFormatter()) })(fetchUser);
+  console.log('Успішний виклик (лога не повинно бути):');
+  await errorLogger(1);
+  console.log('\nВиклик з помилкою (async rejection):');
+  try { await errorLogger(-1); } catch {}
+
+  sep('Тест 4: sync throw + ERROR level');
+  function divide(a, b) {
+    if (b === 0) throw new Error('Division by zero');
+    return a / b;
+  }
+  const loggedDivide = withLogging({ level: 'ERROR', logger: new ConsoleTransport(new JsonFormatter()) })(divide);
+  try { loggedDivide(10, 0); } catch {}
+})();
