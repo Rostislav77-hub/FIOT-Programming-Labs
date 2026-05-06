@@ -32,3 +32,52 @@ class ConsoleTransport {
     else console.log(message);
   }
 }
+
+const withLogging = ({ level, logger }) => (fn) => {
+  const threshold = LOG_LEVELS[level] ?? LOG_LEVELS.INFO;
+  const fnName    = fn.name || '(anonymous)';
+
+  function emit(entryLevel, entry) {
+    if (LOG_LEVELS[entryLevel] >= threshold) logger.log(entryLevel, entry);
+  }
+
+  function baseEntry(event, extra = {}) {
+    return { timestamp: new Date().toISOString(), level, fnName, event, ...extra };
+  }
+
+  function decorated(...args) {
+    emit('DEBUG', baseEntry('CALL', { args }));
+    const start = performance.now();
+    let result;
+
+    try {
+      result = fn(...args);
+    } catch (err) {
+      const duration = +(performance.now() - start).toFixed(3);
+      logger.log('ERROR', baseEntry('ERROR', { error: err.message, stack: err.stack, duration }));
+      throw err; 
+    }
+
+    if (result instanceof Promise) {
+      return result.then(
+        (value) => {
+          const duration = +(performance.now() - start).toFixed(3);
+          emit('INFO', baseEntry('RETURN', { result: value, async: true, duration }));
+          return value;
+        },
+        (err) => {
+          const duration = +(performance.now() - start).toFixed(3);
+          logger.log('ERROR', baseEntry('ERROR', { error: err.message, async: true, duration }));
+          return Promise.reject(err);
+        }
+      );
+    }
+
+    const duration = +(performance.now() - start).toFixed(3);
+    emit('INFO', baseEntry('RETURN', { result, duration }));
+    return result;
+  }
+
+  Object.defineProperty(decorated, 'name', { value: `logged(${fnName})` });
+  return decorated;
+};
